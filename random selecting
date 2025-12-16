@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三角洲行动 · 装备随机抽取</title>
+  <style>
+    [v-cloak] {
+      display: none;
+    }
+
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --accent: #38bdf8;
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.85);
+      --panel-border: rgba(56, 189, 248, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 48px 16px 80px;
+      color: #f8fafc;
+      background-image: linear-gradient(rgba(4, 6, 18, 0.35), rgba(4, 6, 18, 0.55)),
+        url("https://playerhub.df.qq.com/playerhub/be1db7e5-58e4-4a32-9590-de6e918688e6.png");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      backdrop-filter: blur(1px);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: 0.1em;
+    }
+
+    p.subtitle {
+      margin: 0 0 48px;
+      opacity: 0.75;
+    }
+
+    .slots {
+      width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      grid-auto-rows: auto;
+      align-items: start;
+    }
+
+
+    .slot-card {
+      position: relative;
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 20px;
+      background: linear-gradient(145deg, rgba(30, 41, 75, 0.8), rgba(15, 23, 42, 0.95));
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      transition: border-color 0.3s ease;
+      will-change: border-color;
+      align-self: start;
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .slot-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.4), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .slot-card.active {
+      border-color: rgba(56, 189, 248, 0.7);
+    }
+
+    .slot-card.active::after {
+      opacity: 1;
+    }
+
+    .slot-title {
+      margin: 0 0 16px;
+      font-size: 18px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+
+    .slot-visual {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      min-height: 0;
+      max-height: none;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-bottom: 14px;
+      contain: layout style paint;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* 关键修改：图片和占位符都绝对定位铺满视觉区域，保证前后尺寸一致 */
+    .slot-visual img,
+    .slot-placeholder {
+      position: absolute;
+      inset: 0; /* top:0; right:0; bottom:0; left:0; */
+      width: 100%;
+      height: 100%;
+    }
+
+    .slot-visual img {
+      object-fit: contain;
+      object-position: center;
+      display: block;
+    }
+
+    /* 角色卡片采用 cover 填充，其他保持 contain 完整显示 */
+    .slot-visual.slot-visual--cover img {
+      object-fit: cover;
+    }
+
+    .slot-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(248, 250, 252, 0.7);
+      font-size: 16px;
+    }
+
+    .slot-name {
+      font-size: 20px;
+      font-weight: 600;
+      min-height: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+
+    .controls {
+      margin: 48px 0 0;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 14px 40px;
+      border-radius: 999px;
+      border: none;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #020617;
+      background: linear-gradient(120deg, #38bdf8, #2dd4bf);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.97);
+      box-shadow: 0 8px 18px rgba(45, 212, 191, 0.35);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      box-shadow: none;
+      transform: none;
+    }
+
+    @media (max-width: 640px) {
+      .slots {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .slot-title {
+        letter-spacing: 0.08em;
+      }
+      .slot-card {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <h1>三角洲行动随机装备抽取</h1>
+    <p class="subtitle">点击开始按钮，随机抽取角色、主武器、头盔、装甲</p>
+
+    <section class="slots">
+      <article
+        class="slot-card"
+        v-for="slot in slotOrder"
+        :key="slot"
+        :class="{ active: rolling }"
+      >
+        <header class="slot-title">{{ slotMeta[slot].label }}</header>
+        <div
+          class="slot-visual"
+          :class="{ 'slot-visual--cover': slot === 'character' || slot === 'map' }"
+        >
+          <img
+            v-if="results[slot].image"
+            class="slot-image"
+            :src="results[slot].image"
+            :alt="results[slot].name || slotMeta[slot].label"
+            loading="eager"
+          />
+          <div v-else class="slot-placeholder">准备中...</div>
+        </div>
+        <div class="slot-name">{{ results[slot].name || "准备中..." }}</div>
+      </article>
+    </section>
+
+    <div class="controls">
+      <button
+        id="toggle-btn"
+        :disabled="!assetsReady"
+        :style="{ background: buttonGradient }"
+        @click="toggleRolling"
+      >
+        {{ buttonLabel }}
+      </button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        // 按行排列：第1行角色+主武器，第2行地图+头盔，第3行装甲
+        const slotOrder = ["character", "primary", "map", "helmet", "armor"];
+        return {
+          slotOrder,
+          slotMeta: {
+            character: { label: "角色" },
+            primary: { label: "主武器" },
+            helmet: { label: "头盔" },
+            armor: { label: "装甲" },
+            map: { label: "地图" }
+          },
+          pools: {
+            character: [
+              { name: "哈基风", image: "https://playerhub.df.qq.com/playerhub/fae0cd2c-e9ec-4587-b5af-ae1b49dc9139.png" },
+              { name: "no name", image: "https://playerhub.df.qq.com/playerhub/0235c86a-5847-4ea3-870f-a7dc44cf293a.png" },
+              { name: "盾构", image: "https://playerhub.df.qq.com/playerhub/63314ac7-1b0f-4e9a-b7f6-eea3b6e338a0.png" },
+              { name: "老板", image: "https://playerhub.df.qq.com/playerhub/edc0246b-ab37-45bb-854b-fe2d1d05ade9.png" },
+              { name: "露娜", image: "https://playerhub.df.qq.com/playerhub/b8818063-6385-4d89-9318-d9f54a2aef53.png" },
+              { name: "红狼", image: "https://playerhub.df.qq.com/playerhub/3ee7815c-a826-45c3-9184-9e3444263426.png" },
+              { name: "麦小雯", image: "https://playerhub.df.qq.com/playerhub/4a45bb42-e413-4b5a-bedb-7eb8d0fd812d.png" },
+              { name: "张姐", image: "https://playerhub.df.qq.com/playerhub/bd8a00c4-505e-4602-b60a-7a4e14270e6e.png" },
+              { name: "老黑", image: "https://playerhub.df.qq.com/playerhub/f3b64d6d-1bdd-4242-942d-6c70449471bc.png" },
+              { name: "威风的龙", image: "https://playerhub.df.qq.com/playerhub/9ef4dc5c-36aa-40e6-a3ec-b53d251a1146.png" },
+              { name: "鸟兽兽", image: "https://playerhub.df.qq.com/playerhub/27d229aa-4ae4-435e-be18-980cfe52d6c3.png" },
+              { name: "比特", image: "https://playerhub.df.qq.com/playerhub/a1bdaaf7-0e8f-4c65-a175-b029d8bcceb9.png" },
+              { name: "银翼", image: "https://playerhub.df.qq.com/playerhub/b6d34fba-a8f2-49cb-8239-9bc980f48ff9.png" }
+            ],
+            primary: [
+              { name: "满改M7", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img1.jpg" },
+              { name: "维克托", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img2.jpg" },
+              { name: "M870霰弹枪", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img3.jpg" },
+              { name: "PKM", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img4.jpg" },
+              { name: "SR-25", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img5.jpg" },
+              { name: "AWM", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p5_img6.jpg" },
+              { name: "QCQ", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000011.png" },
+              { name: "P90", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000002.png" },
+              { name: "SR-3m", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000008.png" },
+              { name: "SMG45", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000006.png" },
+              { name: "MP7", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000010.png" },
+              { name: "勇士", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000009.png" },
+              { name: "G18", image: "https://www.dpcamp.cn/Files/object/gun/gunPistol/p_18070000005.png" },
+              { name: "M4A1", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000001.png" },
+              { name: "AKM", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000006.png" },
+              { name: "M16A4", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000014.png" },
+              { name: "QBZ-95", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000008.png" },
+              { name: "Ash-12", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000012.png" },
+              { name: "K416", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000013.png" },
+              { name: "AUG", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000015.png" },
+              { name: "AK-12", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000018.png" },
+              { name: "SCAR-H", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000021.png" },
+              { name: "G3", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000023.png" },
+              { name: "CAR-15", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000031.png" },
+              { name: "AS Val", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000037.png" },
+              { name: "腾龙", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000038.png" },
+              { name: "M700", image: "https://www.dpcamp.cn/Files/object/gun/gunSniper/p_18060000009.png" },
+              { name: "M14", image: "https://www.dpcamp.cn/Files/object/gun/gunMP/p_18050000005.png" },
+              { name: "PSG-1", image: "https://www.dpcamp.cn/Files/object/gun/gunMP/p_18050000031.png" },
+              { name: "QJB201", image: "https://www.dpcamp.cn/Files/object/gun/gunLMG/p_18040000004.png" },
+              { name: "M250", image: "https://www.dpcamp.cn/Files/object/gun/gunLMG/p_18040000003.png" },
+              { name: "K437", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000040.png" },
+              { name: "KC17", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000042.png" },
+              { name: "MK47", image: "https://www.dpcamp.cn/Files/object/gun/gunRifle/p_18010000043.png" },
+              { name: "马林", image: "https://www.dpcamp.cn/Files/object/gun/gunMP/p_18050000032.png" },
+              { name: "MK4", image: "https://www.dpcamp.cn/Files/object/gun/gunSMG/p_18020000012.png" },
+              { name: "S12K", image: "https://www.dpcamp.cn/Files/object/gun/gunShotgun/p_18030000002.png" }
+            ],
+            helmet: [
+              { name: "DICH-9", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010006003.png" },
+              { name: "GT5", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010006004.png" },
+              { name: "Mask1铁壁头", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010005001.png" },
+              { name: "H09防暴头", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010005002.png" },
+              { name: "DICH-1", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010005003.png" },
+              { name: "GN", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010005004.png" },
+              { name: "D6", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010004001.png" },
+              { name: "MHS", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010004002.png" },
+              { name: "DICH", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010004003.png" },
+              { name: "GT1", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010004004.png" },
+              { name: "防暴头", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010003001.png" },
+              { name: "H07", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010003002.png" },
+              { name: "MC201", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010003004.png" },
+              { name: "复古摩托", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010002001.png" },
+              { name: "DRO", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010002003.png" },
+              { name: "钢盔", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010001001.png" },
+              { name: "奔尼帽", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010001003.png" },
+              { name: "户外棒球帽", image: "https://www.dpcamp.cn/Files/object/protect/helmet/p_11010001004.png" }
+            ],
+            armor: [
+              { name: "特里克", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050006003.png" },
+              { name: "泰坦", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050006004.png" },
+              { name: "老赛甲", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050005001.png" },
+              { name: "HVK-2", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050005002.png" },
+              { name: "FS复合甲", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050005003.png" },
+              { name: "重型突击", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050005004.png" },
+              { name: "武士防弹", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050004001.png" },
+              { name: "突击手防弹", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050004002.png" },
+              { name: "DTA-VS", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050004003.png" },
+              { name: "MK-2", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050004004.png" },
+              { name: "HMP", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050004007.png" },
+              { name: "制式防弹", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050003001.png" },
+              { name: "Hvk快拆", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050003002.png" },
+              { name: "TGH", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050003003.png" },
+              { name: "射手战术", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050003004.png" },
+              { name: "简易防刺", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050002001.png" },
+              { name: "HT", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050002002.png" },
+              { name: "TG", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050002003.png" },
+              { name: "通用战术", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050002004.png" },
+              { name: "摩托马甲", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050001001.png" },
+              { name: "尼龙", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050001003.png" },
+              { name: "安保", image: "https://www.dpcamp.cn/Files/object/protect/armor/p_11050001002.png" }
+            ],
+            map: [
+              { name: "机密巴克什", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-1.jpg" },
+              { name: "绝密巴克什", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-1.jpg" },
+              { name: "机密大坝", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-5.jpg" },
+              { name: "监狱", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-2.jpg" },
+              { name: "机密航天", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-3.jpg" },
+              { name: "绝密航天", image: "https://game.gtimg.cn/images/dfm/cp/a20240906main/p7-m1-3.jpg" }
+            ]
+          },
+          results: slotOrder.reduce((acc, key) => {
+            acc[key] = { name: "", image: "" };
+            return acc;
+          }, {}),
+          rolling: false,
+          assetsReady: false,
+          animationId: null,
+          imageCache: new Map()
+        };
+      },
+      computed: {
+        buttonLabel() {
+          if (!this.assetsReady) return "资源加载中...";
+          return this.rolling ? "停止抽取" : "开始抽取";
+        },
+        buttonGradient() {
+          if (!this.assetsReady) return "linear-gradient(120deg, #94a3b8, #64748b)";
+          return this.rolling
+            ? "linear-gradient(120deg, #f472b6, #fb7185)"
+            : "linear-gradient(120deg, #38bdf8, #2dd4bf)";
+        }
+      },
+      methods: {
+        pickRandom(category) {
+          const options = this.pools[category];
+          return options[Math.floor(Math.random() * options.length)];
+        },
+        runTick() {
+          this.slotOrder.forEach((category) => {
+            const item = this.pickRandom(category);
+            this.results[category] = {
+              name: item.name,
+              image: (item.image || "").trim()
+            };
+          });
+          this.animationId = requestAnimationFrame(() => this.runTick());
+        },
+        startRolling() {
+          if (!this.assetsReady || this.rolling) return;
+          this.rolling = true;
+          this.runTick();
+        },
+        async stopRolling() {
+          if (!this.rolling) return;
+          this.rolling = false;
+          cancelAnimationFrame(this.animationId);
+          // 确保当前显示的图片已经加载完成
+          const imagePromises = this.slotOrder.map((category) => {
+            const imageSrc = this.results[category]?.image;
+            return imageSrc ? this.ensureImageLoaded(imageSrc) : Promise.resolve();
+          });
+          await Promise.all(imagePromises);
+        },
+        async toggleRolling() {
+          if (!this.assetsReady) return;
+          if (this.rolling) {
+            await this.stopRolling();
+          } else {
+            this.startRolling();
+          }
+        },
+        collectImageSources() {
+          const sources = new Set();
+          Object.values(this.pools).forEach((items) => {
+            items.forEach((item) => {
+              const trimmed = (item.image || "").trim();
+              if (trimmed) sources.add(trimmed);
+            });
+          });
+          return Array.from(sources);
+        },
+        preloadImages(sources) {
+          return Promise.all(
+            sources.map(
+              (src) =>
+                new Promise((resolve) => {
+                  if (this.imageCache.has(src)) {
+                    resolve();
+                    return;
+                  }
+                  const img = new Image();
+                  img.onload = () => {
+                    this.imageCache.set(src, img);
+                    resolve();
+                  };
+                  img.onerror = () => {
+                    this.imageCache.set(src, null);
+                    resolve();
+                  };
+                  img.src = src;
+                })
+            )
+          );
+        },
+        ensureImageLoaded(src) {
+          if (!src) return Promise.resolve();
+          const trimmed = src.trim();
+          if (this.imageCache.has(trimmed)) {
+            return Promise.resolve();
+          }
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              this.imageCache.set(trimmed, img);
+              resolve();
+            };
+            img.onerror = () => {
+              this.imageCache.set(trimmed, null);
+              resolve();
+            };
+            img.src = trimmed;
+          });
+        },
+        normalizePools() {
+          Object.keys(this.pools).forEach((category) => {
+            this.pools[category].forEach((item) => {
+              if (item.image) {
+                item.image = item.image.trim();
+              }
+            });
+          });
+        },
+        prepareAssets() {
+          this.normalizePools();
+          this.assetsReady = false;
+          this.preloadImages(this.collectImageSources()).then(() => {
+            this.assetsReady = true;
+          });
+        }
+      },
+      mounted() {
+        this.prepareAssets();
+      }
+    }).mount("#app");
+  </script>
+</body>
+</html>
