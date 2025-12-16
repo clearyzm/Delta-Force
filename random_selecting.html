@@ -51,12 +51,34 @@
     }
 
     .slots {
-      width: min(1100px, 100%);
+      width: min(1200px, 100%);
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 20px;
       grid-auto-rows: auto;
       align-items: start;
+    }
+
+    /* 固定栅格位置：第1行 角色+地图，第2行 主武器+头盔+装甲，尺寸一致 */
+    .slot-pos-character {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .slot-pos-map {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .slot-pos-primary {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .slot-pos-helmet {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .slot-pos-armor {
+      grid-column: 3;
+      grid-row: 2;
     }
 
 
@@ -221,7 +243,7 @@
         class="slot-card"
         v-for="slot in slotOrder"
         :key="slot"
-        :class="{ active: rolling }"
+        :class="[cardLayoutClass(slot), { active: rolling }]"
       >
         <header class="slot-title">{{ slotMeta[slot].label }}</header>
         <div
@@ -259,8 +281,8 @@
 
     createApp({
       data() {
-        // 按行排列：第1行角色+主武器，第2行地图+头盔，第3行装甲
-        const slotOrder = ["character", "primary", "map", "helmet", "armor"];
+        // 两行布局：第1行 角色 + 地图，第2行 主武器 + 头盔 + 装甲（地图与其他同尺寸）
+        const slotOrder = ["character", "map", "primary", "helmet", "armor"];
         return {
           slotOrder,
           slotMeta: {
@@ -401,6 +423,16 @@
         }
       },
       methods: {
+        cardLayoutClass(slot) {
+          const map = {
+            character: "slot-pos-character",
+            map: "slot-pos-map",
+            primary: "slot-pos-primary",
+            helmet: "slot-pos-helmet",
+            armor: "slot-pos-armor"
+          };
+          return map[slot] || "";
+        },
         pickRandom(category) {
           const options = this.pools[category];
           return options[Math.floor(Math.random() * options.length)];
